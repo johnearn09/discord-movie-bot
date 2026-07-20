@@ -1,17 +1,18 @@
 const cheerio = require('cheerio');
 
 /**
- * Fetch VMX/Vivamax original movies list from Wikipedia (List of VMX original programming)
+ * Fetch VMX/Vivamax original movies list from TMDB
  * @returns {Promise<Array<object>>}
  */
 async function fetchVivamaxFeed() {
   try {
-    const url = 'https://en.wikipedia.org/wiki/List_of_VMX_original_programming';
-    console.log(`[Vivamax] Fetching: ${url}`);
+    const url = 'https://www.themoviedb.org/company/149142-vivamax/movie';
+    console.log(`[Vivamax] Fetching from TMDB: ${url}`);
     
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9'
       }
     });
 
@@ -23,73 +24,50 @@ async function fetchVivamaxFeed() {
     const $ = cheerio.load(html);
     const movies = [];
 
-    // Parse Year sections (e.g. 2021 to 2026)
-    $('h3, h4').each((idx, header) => {
-      const text = $(header).text().trim();
-      const match = text.match(/\b(202\d)\b/); // Matches years like 2024, 2025, 2026
-      if (match) {
-        const year = match[1];
-        
-        // Header might be wrapped inside a <div class="mw-heading"> on modern Wikipedia
-        let topElem = $(header);
-        if (topElem.parent().hasClass('mw-heading')) {
-          topElem = topElem.parent();
-        }
+    // Find all media cards on the TMDB company movie list page
+    $('div[class*="media-card"]').each((idx, elem) => {
+      const $card = $(elem);
+      
+      // Get title
+      const title = $card.find('h2').text().trim();
+      
+      // Get relative link and convert to absolute
+      const relativeLink = $card.find('a[href^="/movie/"]').attr('href') || '';
+      const link = relativeLink ? `https://www.themoviedb.org${relativeLink}` : 'https://www.themoviedb.org/company/149142-vivamax';
+      
+      // Get image poster
+      let image = $card.find('img.poster').attr('src') || '';
+      if (image) {
+        // Upgrade image size for high quality poster
+        image = image.replace('/w94_and_h141_face/', '/w500/');
+      } else {
+        image = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/VMX_logo.svg/512px-VMX_logo.svg.png';
+      }
+      
+      // Get release date
+      const date = $card.find('.release_date').text().trim();
+      
+      // Get description
+      const overview = $card.find('div.mt-4 p, p').first().text().trim();
 
-        // Find the next sibling table
-        let next = topElem.next();
-        while (next.length && next[0].name !== 'table') {
-          next = next.next();
-        }
-        
-        if (next.length && next.hasClass('wikitable')) {
-          let currentMonth = 'January'; // Default fallback month for rowspans
-
-          next.find('tr').each((rIdx, tr) => {
-            if (rIdx === 0) return; // Skip header row
-            
-            const tds = $(tr).find('td');
-            const th = $(tr).find('th');
-            
-            // If the row contains a <th> (excluding month span spacer), it has the month name
-            if (th.length && th.attr('rowspan')) {
-              const monthText = th.text().trim().replace(/[\r\n\s]+/g, '');
-              if (monthText && monthText.length > 2) {
-                // Convert "JANUARY" to "January"
-                currentMonth = monthText.charAt(0).toUpperCase() + monthText.slice(1).toLowerCase();
-              }
-            }
-
-            if (tds.length >= 2) {
-              const day = $(tds[0]).text().trim();
-              const title = $(tds[1]).text().trim();
-              const relativeLink = $(tds[1]).find('a').attr('href') || '';
-              const link = relativeLink ? `https://en.wikipedia.org${relativeLink}` : 'https://www.vivamax.net/';
-              
-              if (title && day) {
-                const date = `${currentMonth} ${day}, ${year}`;
-                
-                movies.push({
-                  id: `vivamax_${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-                  title,
-                  url: link,
-                  image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/VMX_logo.svg/512px-VMX_logo.svg.png', // Clean VMX logo
-                  criticsScore: 'N/A',
-                  audienceScore: 'N/A',
-                  info: `Released: ${date}`,
-                  source: 'Vivamax'
-                });
-              }
-            }
-          });
-        }
+      if (title && relativeLink) {
+        movies.push({
+          id: `vivamax_${relativeLink.replace('/movie/', '').replace(/\//g, '_')}`,
+          title,
+          url: link,
+          image,
+          criticsScore: 'N/A',
+          audienceScore: 'N/A',
+          info: `Released: ${date || 'N/A'}`,
+          description: overview || '',
+          source: 'Vivamax'
+        });
       }
     });
 
-    // Reverse to show the latest ones first
-    return movies.reverse();
+    return movies;
   } catch (err) {
-    console.error('[Vivamax] Error fetching feed:', err.message);
+    console.error('[Vivamax] Error fetching feed from TMDB:', err.message);
     return [];
   }
 }

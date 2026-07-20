@@ -1,21 +1,21 @@
 /**
- * Send movie updates to Discord Webhook.
- * Group embeds in chunks of up to 10 (Discord limit per request) to prevent rate limits.
- * @param {Array<object>} items - List of parsed movie/feed items
- * @param {string} webhookUrl - Discord Webhook URL
- * @returns {Promise<boolean>}
- */
-/**
  * Build rich Discord embeds from movie items.
  * @param {Array<object>} items 
  * @returns {Array<object>}
  */
 function buildEmbeds(items) {
   return items.map(item => {
-    const isNetflix = item.source === 'Netflix';
-    
-    // Choose colors: Netflix red (#E50914 -> 15010068) or Rotten Tomatoes orange/red (#FA320A -> 16396810)
-    const color = isNetflix ? 15010068 : 16396810;
+    // Determine service color
+    let color = 16396810; // Default RT orange/red
+    if (item.source === 'Netflix' || item.source.includes('Netflix')) {
+      color = 15010068; // Netflix red
+    } else if (item.source === 'Vivamax') {
+      color = 16743168; // Vivamax/VMX hot orange/pink (#FF5500)
+    } else if (item.source.includes('Prime')) {
+      color = 987116; // Prime Video blue
+    } else if (item.source.includes('Disney')) {
+      color = 32896; // Disney+ teal/blue
+    }
 
     const embed = {
       title: item.title,
@@ -31,10 +31,13 @@ function buildEmbeds(items) {
       embed.thumbnail = { url: item.image };
     }
 
-    // Add description / fields
-    if (isNetflix) {
-      embed.description = item.description || 'No description available.';
-    } else {
+    // Add description if present
+    if (item.description) {
+      embed.description = item.description;
+    }
+
+    // Only add score fields if there is an active score (typically for Rotten Tomatoes reviews)
+    if (item.criticsScore && item.criticsScore !== 'N/A' || item.audienceScore && item.audienceScore !== 'N/A') {
       embed.fields = [
         {
           name: '🍅 Critics Score',
