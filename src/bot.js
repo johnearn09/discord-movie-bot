@@ -3,6 +3,7 @@ const path = require('path');
 const { Client, GatewayIntentBits } = require('discord.js');
 const { fetchRottenTomatoes } = require('./sources/rottentomatoes');
 const { fetchNetflixFeed } = require('./sources/netflix');
+const { fetchVivamaxFeed } = require('./sources/vivamax');
 const { buildEmbeds } = require('./discord');
 const { loadHistory, isAlreadySent, markAsSent, isHistoryEmpty, saveHistory } = require('./history');
 
@@ -10,8 +11,8 @@ const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const FEED_LIMIT = parseInt(process.env.FEED_LIMIT || '8', 10);
 
-// Default movie sources to scan (Netflix RSS, RT Prime, RT Disney, RT Recommendations)
-const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation';
+// Default movie sources to scan (Netflix RSS, RT Prime, RT Disney, RT Recommendations, Vivamax)
+const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation,vivamax';
 
 let schedulerTimer = null;
 
@@ -78,6 +79,8 @@ async function getFeedFromSource(source) {
     return await fetchRottenTomatoes('disney_plus');
   } else if (clean === 'netflix' || clean === 'netflix_rss') {
     return await fetchNetflixFeed();
+  } else if (clean === 'vivamax' || clean === 'vmx') {
+    return await fetchVivamaxFeed();
   }
   return [];
 }
@@ -95,6 +98,7 @@ async function fetchLatestMovies(limit, filterSource = null) {
     if (target === 'recommendations') target = 'recommendation';
     if (target === 'disney_plus') target = 'disney';
     if (target === 'amazon_prime') target = 'prime';
+    if (target === 'vmx') target = 'vivamax';
     sources = [target];
   } else {
     sources = (process.env.MOVIE_SOURCES || DEFAULT_SOURCES)
@@ -301,7 +305,7 @@ function startBot() {
     if (command === 'help') {
       const helpText = 
         `🎬 **Movie Feed Bot Commands**\n\n` +
-        `• \`${currentPrefix}movies [source]\` — Displays current feeds. You can request a specific source: \`netflix\`, \`prime\`, \`disney\`, \`recommendation\`. Example: \`${currentPrefix}movies prime\`\n` +
+        `• \`${currentPrefix}movies [source]\` — Displays current feeds. You can request a specific source: \`netflix\`, \`prime\`, \`disney\`, \`recommendation\`, \`vivamax\`. Example: \`${currentPrefix}movies vivamax\`\n` +
         `• \`${currentPrefix}setschedule <hours>\` — Changes how often automated posts run (e.g. \`${currentPrefix}setschedule 2\`).\n` +
         `• \`${currentPrefix}setprefix <prefix>\` — Customizes the bot's command prefix (e.g. \`${currentPrefix}setprefix !\`).\n` +
         `• \`${currentPrefix}help\` — Shows this help message.`;

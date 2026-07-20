@@ -3,12 +3,13 @@ const { startBot } = require('./bot');
 const { loadHistory, isAlreadySent, markAsSent, isHistoryEmpty, saveHistory } = require('./history');
 const { fetchRottenTomatoes } = require('./sources/rottentomatoes');
 const { fetchNetflixFeed } = require('./sources/netflix');
+const { fetchVivamaxFeed } = require('./sources/vivamax');
 const { sendToDiscord } = require('./discord');
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const FEED_LIMIT = parseInt(process.env.FEED_LIMIT || '8', 10);
-const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation';
+const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation,vivamax';
 
 const SOURCES = (process.env.MOVIE_SOURCES || DEFAULT_SOURCES)
   .split(',')
@@ -34,6 +35,8 @@ async function getFeedFromSource(source) {
     return await fetchRottenTomatoes('disney_plus');
   } else if (clean === 'netflix' || clean === 'netflix_rss') {
     return await fetchNetflixFeed();
+  } else if (clean === 'vivamax' || clean === 'vmx') {
+    return await fetchVivamaxFeed();
   }
   return [];
 }
@@ -98,7 +101,7 @@ function boot() {
   const hasBotToken = TOKEN && TOKEN !== 'YOUR_BOT_TOKEN_HERE' && TOKEN !== 'your_bot_token_here';
   
   if (hasBotToken) {
-    console.log('[Orchestrator] Valid Discord Bot Token detected. Starting Discord Bot Mode...');
+    console.log('[Orchestrator] Valid Discord Bot Token detected. Starting Discord Bot Mode......');
     startBot();
   } else {
     console.log('[Orchestrator] No valid Bot Token detected. Falling back to Discord Webhook Mode...');
