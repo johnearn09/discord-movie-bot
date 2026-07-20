@@ -4,12 +4,13 @@ const { loadHistory, isAlreadySent, markAsSent, isHistoryEmpty, saveHistory } = 
 const { fetchRottenTomatoes } = require('./sources/rottentomatoes');
 const { fetchNetflixFeed } = require('./sources/netflix');
 const { fetchVivamaxFeed } = require('./sources/vivamax');
+const { fetchFlixPatrol } = require('./sources/flixpatrol');
 const { sendToDiscord } = require('./discord');
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const FEED_LIMIT = parseInt(process.env.FEED_LIMIT || '8', 10);
-const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation,vivamax';
+const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation,vivamax,hbo';
 
 const SOURCES = (process.env.MOVIE_SOURCES || DEFAULT_SOURCES)
   .split(',')
@@ -30,7 +31,9 @@ async function getFeedFromSource(source) {
   } else if (clean === 'netflix_rt') {
     return await fetchRottenTomatoes('netflix');
   } else if (clean === 'prime' || clean === 'amazon_prime') {
-    return await fetchRottenTomatoes('amazon_prime');
+    return await fetchFlixPatrol('amazon-prime');
+  } else if (clean === 'hbo' || clean === 'hbo_max' || clean === 'hbomax') {
+    return await fetchFlixPatrol('hbo-max');
   } else if (clean === 'disney' || clean === 'disney_plus') {
     return await fetchRottenTomatoes('disney_plus');
   } else if (clean === 'netflix' || clean === 'netflix_rss') {

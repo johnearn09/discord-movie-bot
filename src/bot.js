@@ -4,6 +4,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { fetchRottenTomatoes } = require('./sources/rottentomatoes');
 const { fetchNetflixFeed } = require('./sources/netflix');
 const { fetchVivamaxFeed } = require('./sources/vivamax');
+const { fetchFlixPatrol } = require('./sources/flixpatrol');
 const { buildEmbeds } = require('./discord');
 const { loadHistory, isAlreadySent, markAsSent, isHistoryEmpty, saveHistory } = require('./history');
 
@@ -11,8 +12,8 @@ const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const FEED_LIMIT = parseInt(process.env.FEED_LIMIT || '8', 10);
 
-// Default movie sources to scan (Netflix RSS, RT Prime, RT Disney, RT Recommendations, Vivamax)
-const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation,vivamax';
+// Default movie sources to scan (Netflix, Prime FlixPatrol, Disney+ RT, RT Recommendations, Vivamax TMDB, HBO FlixPatrol)
+const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation,vivamax,hbo';
 
 let schedulerTimer = null;
 
@@ -74,7 +75,9 @@ async function getFeedFromSource(source) {
   } else if (clean === 'netflix_rt') {
     return await fetchRottenTomatoes('netflix');
   } else if (clean === 'prime' || clean === 'amazon_prime') {
-    return await fetchRottenTomatoes('amazon_prime');
+    return await fetchFlixPatrol('amazon-prime');
+  } else if (clean === 'hbo' || clean === 'hbo_max' || clean === 'hbomax') {
+    return await fetchFlixPatrol('hbo-max');
   } else if (clean === 'disney' || clean === 'disney_plus') {
     return await fetchRottenTomatoes('disney_plus');
   } else if (clean === 'netflix' || clean === 'netflix_rss') {
@@ -99,6 +102,7 @@ async function fetchLatestMovies(limit, filterSource = null) {
     if (target === 'disney_plus') target = 'disney';
     if (target === 'amazon_prime') target = 'prime';
     if (target === 'vmx') target = 'vivamax';
+    if (target === 'hbo_max' || target === 'hbomax') target = 'hbo';
     sources = [target];
   } else {
     sources = (process.env.MOVIE_SOURCES || DEFAULT_SOURCES)
@@ -246,6 +250,19 @@ function startScheduler(client) {
 }
 
 /**
+ * Helper to check if message sender has permission to configure the bot.
+ * Allows Server Owner, Administrator permission, or any role containing "admin" in its name.
+ */
+function checkAdminPermission(message) {
+  const isOwner = message.guild && message.guild.ownerId === message.author.id;
+  const hasAdminPermission = message.member && message.member.permissions.has('Administrator');
+  const hasAdminRole = message.member && message.member.roles.cache.some(role => 
+    role.name.toLowerCase().includes('admin')
+  );
+  return isOwner || hasAdminPermission || hasAdminRole;
+}
+
+/**
  * Initialize and start the Discord Bot Client
  */
 function startBot() {
@@ -305,7 +322,7 @@ function startBot() {
     if (command === 'help') {
       const helpText = 
         `🎬 **Movie Feed Bot Commands**\n\n` +
-        `• \`${currentPrefix}movies [source]\` — Displays current feeds. You can request a specific source: \`netflix\`, \`prime\`, \`disney\`, \`recommendation\`, \`vivamax\`. Example: \`${currentPrefix}movies vivamax\`\n` +
+        `• \`${currentPrefix}movies [source]\` — Displays current feeds. You can request a specific source: \`netflix\`, \`prime\`, \`disney\`, \`recommendation\`, \`vivamax\`, \`hbo\`. Example: \`${currentPrefix}movies prime\`\n` +
         `• \`${currentPrefix}setschedule <hours>\` — Changes how often automated posts run (e.g. \`${currentPrefix}setschedule 2\`).\n` +
         `• \`${currentPrefix}setprefix <prefix>\` — Customizes the bot's command prefix (e.g. \`${currentPrefix}setprefix !\`).\n` +
         `• \`${currentPrefix}help\` — Shows this help message.`;
@@ -351,8 +368,8 @@ function startBot() {
         return message.reply(`❌ Invalid hours. Please supply a positive number. Example: \`${currentPrefix}setschedule 2\``);
       }
 
-      if (!message.member.permissions.has('Administrator')) {
-        return message.reply('❌ You must be an Administrator to change the schedule.');
+      if (!checkAdminPermission(message)) {
+        return message.reply('❌ You must be the Server Owner, have the Administrator permission, or have an Admin role to change the schedule.');
       }
 
       try {
@@ -375,8 +392,8 @@ function startBot() {
         return message.reply(`❌ Invalid prefix. It must be between 1 and 5 characters and cannot contain spaces. Example: \`${currentPrefix}setprefix mo!\``);
       }
 
-      if (!message.member.permissions.has('Administrator')) {
-        return message.reply('❌ You must be an Administrator to change the prefix.');
+      if (!checkAdminPermission(message)) {
+        return message.reply('❌ You must be the Server Owner, have the Administrator permission, or have an Admin role to change the prefix.');
       }
 
       try {
