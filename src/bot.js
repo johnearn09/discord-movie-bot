@@ -12,7 +12,7 @@ const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const FEED_LIMIT = parseInt(process.env.FEED_LIMIT || '8', 10);
 
-// Default movie sources to scan (Netflix, Prime FlixPatrol, Disney+ RT, RT Recommendations, Vivamax TMDB, HBO FlixPatrol)
+// Default movie sources to scan (Netflix, Prime, Disney+ RT, RT Recommendations, Vivamax TMDB, HBO)
 const DEFAULT_SOURCES = 'netflix,prime,disney,recommendation,vivamax,hbo';
 
 let schedulerTimer = null;
@@ -75,9 +75,23 @@ async function getFeedFromSource(source) {
   } else if (clean === 'netflix_rt') {
     return await fetchRottenTomatoes('netflix');
   } else if (clean === 'prime' || clean === 'amazon_prime') {
-    return await fetchFlixPatrol('amazon-prime');
+    // Try FlixPatrol first
+    let items = await fetchFlixPatrol('amazon-prime');
+    // If blocked or empty, fallback to Rotten Tomatoes Prime
+    if (items.length === 0) {
+      console.log('[Bot] FlixPatrol Prime failed or was blocked. Falling back to Rotten Tomatoes Prime...');
+      items = await fetchRottenTomatoes('amazon_prime');
+    }
+    return items;
   } else if (clean === 'hbo' || clean === 'hbo_max' || clean === 'hbomax') {
-    return await fetchFlixPatrol('hbo-max');
+    // Try FlixPatrol first
+    let items = await fetchFlixPatrol('hbo-max');
+    // If blocked or empty, fallback to Rotten Tomatoes HBO Max
+    if (items.length === 0) {
+      console.log('[Bot] FlixPatrol HBO Max failed or was blocked. Falling back to Rotten Tomatoes HBO Max...');
+      items = await fetchRottenTomatoes('hbo_max');
+    }
+    return items;
   } else if (clean === 'disney' || clean === 'disney_plus') {
     return await fetchRottenTomatoes('disney_plus');
   } else if (clean === 'netflix' || clean === 'netflix_rss') {
