@@ -1,0 +1,18 @@
+{
+  "name": "dc-movie-automations",
+  "version": "1.0.0",
+  "description": "Discord Movie Feed Automation for Rotten Tomatoes and Netflix",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "discord.js": "^14.27.0",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
