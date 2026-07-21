@@ -2,7 +2,7 @@ const cheerio = require('cheerio');
 
 /**
  * Fetch movies from Rotten Tomatoes browse pages.
- * @param {string} type - 'top_rated' or 'popular'
+ * @param {string} type - 'top_rated', 'popular', 'netflix', 'prime', 'disney', 'hbo_max'
  * @returns {Promise<Array<object>>}
  */
 async function fetchRottenTomatoes(type = 'top_rated') {
@@ -20,6 +20,9 @@ async function fetchRottenTomatoes(type = 'top_rated') {
     } else if (cleanType === 'disney_plus' || cleanType === 'disney') {
       url = 'https://www.rottentomatoes.com/browse/movies_at_home/services:disney_plus';
       label = 'Rotten Tomatoes (Disney+)';
+    } else if (cleanType === 'hbo' || cleanType === 'hbo_max' || cleanType === 'hbomax' || cleanType === 'max') {
+      url = 'https://www.rottentomatoes.com/browse/movies_at_home/services:hbo_max';
+      label = 'Rotten Tomatoes (HBO Max)';
     } else if (cleanType === 'popular') {
       url = 'https://www.rottentomatoes.com/browse/movies_at_home/sort:popular';
       label = 'Rotten Tomatoes (Popular)';

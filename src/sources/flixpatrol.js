@@ -1,20 +1,28 @@
 const cheerio = require('cheerio');
-const { execSync } = require('child_process');
 
 /**
- * Fetch Top 5 Movies and Top 5 Series from FlixPatrol for a platform
+ * Fetch Top 5 Movies and Top 5 Series from FlixPatrol via allorigins.win proxy
  * @param {string} platform - 'amazon-prime' or 'hbo-max'
  * @returns {Promise<Array<object>>}
  */
 async function fetchFlixPatrol(platform) {
   try {
-    const url = `https://flixpatrol.com/top10/${platform}/`;
-    console.log(`[FlixPatrol] Fetching using curl: ${url}`);
+    const targetUrl = `https://flixpatrol.com/top10/${platform}/`;
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+    console.log(`[FlixPatrol] Fetching via proxy: ${targetUrl}`);
     
-    // Execute curl command to bypass Cloudflare block
-    const cmd = `curl -s -L -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "${url}"`;
-    const html = execSync(cmd, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 });
-    
+    // Using native fetch instead of curl since the proxy runs on Vercel/Cloudflare Workers and bypasses blocks
+    const response = await fetch(proxyUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Proxy HTTP error! status: ${response.status}`);
+    }
+
+    const html = await response.text();
     if (!html || html.length < 500) {
       throw new Error('Received empty or too short HTML response');
     }
@@ -45,7 +53,7 @@ async function fetchFlixPatrol(platform) {
         const title = titleText.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
         
         const relativeLink = $link.attr('href') || '';
-        const link = relativeLink ? `https://flixpatrol.com${relativeLink}` : url;
+        const link = relativeLink ? `https://flixpatrol.com${relativeLink}` : targetUrl;
 
         let image = $row.find('img').first().attr('src') || '';
         if (image && !image.startsWith('http')) {
